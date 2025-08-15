@@ -39,6 +39,7 @@ impl Parser {
         let doc = Document::parse_with_options(&contents_clone, opts)?;
 
         self.recurse(doc.root_element(), None)?;
+        dbg!(&self.components);
         return Ok(self);
     }
 
@@ -65,7 +66,7 @@ impl Parser {
             }
             self.recurse(child, Some(render_tree.clone()))?;
         }
-
+        
         return Ok(());
     }
 

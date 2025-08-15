@@ -8,6 +8,7 @@ use ratatui::{
 use std::{
     cell::RefCell,
     collections::BTreeMap,
+    fmt,
     rc::Rc,
     sync::{Arc, Mutex},
 };
@@ -27,6 +28,17 @@ pub struct RenderTree {
     size_constraint: Constraint,
     ctype: ComponentType,
     renderer: Option<Box<dyn Fn(Store, Rect) -> Box<dyn Widget>>>,
+}
+
+impl fmt::Debug for RenderTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RenderTree")
+            .field("children", &self.children)
+            .field("store", &self.store_ref)
+            .field("size", &self.size_constraint)
+            .field("type", &self.ctype)
+            .finish()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
