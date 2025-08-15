@@ -1,27 +1,26 @@
-use anyhow::Result;
 use backend::{RenderTree, SubRoutine, xmlparser};
+use color_eyre::eyre::Result;
 use crossterm::event::{self, Event};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
     widgets::{Block, Borders, Paragraph},
 };
-use std::path::PathBuf;
+use std::{cell::RefCell, process::exit, rc::Rc};
 
 mod backend;
 
 #[derive(Default)]
 struct App {
-    components: Vec<RenderTree>,
+    components: Vec<Rc<RefCell<RenderTree>>>,
     routines: Vec<SubRoutine>,
 }
 
 #[tokio::main]
-async fn main() -> color_eyre::Result<()> {
+async fn main() -> Result<()> {
     color_eyre::install()?;
-    println!("Hello, world!");
-    xmlparser::Parser::new("demo.xml").unwrap().parse().unwrap();
-
+    let (render_tree, subroutines) = xmlparser::Parser::new("demo.xml")?.parse()?.ret()?;
+    dbg!(render_tree);
     /*let mut terminal = ratatui::init();
     loop {
         terminal.draw(|frame| {

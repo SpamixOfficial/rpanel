@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use color_eyre::{Result, eyre::Context};
 use ratatui::{layout::Constraint, widgets::Clear};
 use roxmltree::{Document, Node, ParsingOptions};
 
@@ -22,15 +22,15 @@ pub struct Parser {
 
 impl Parser {
     pub fn new<P: Into<PathBuf>>(p: P) -> Result<Self> {
-        return Ok(Self {
+        Ok(Self {
             components: vec![],
             subroutines: vec![],
             contents: fs::read_to_string(p.into())?,
             current_depth: 0,
-        });
+        })
     }
 
-    pub fn parse(&mut self) -> Result<&mut Self> {
+    pub fn parse(mut self) -> Result<Self> {
         let opts = ParsingOptions {
             allow_dtd: true,
             ..ParsingOptions::default()
@@ -38,20 +38,26 @@ impl Parser {
         let contents_clone = self.contents.clone();
         let doc = Document::parse_with_options(&contents_clone, opts)?;
 
-        self.recurse(doc.root_element(), None)?;
-        dbg!(&self.components);
-        return Ok(self);
+        if doc.root_element().tag_name().name() != "window" {
+            panic!("Invalid root tag! (should be <window>)");
+        }
+
+        self.recurse(doc.root_element(), &doc, None)?;
+
+        Ok(self)
     }
 
-    fn recurse(&mut self, node: Node, parent: Option<RTRef>) -> Result<()> {
+    fn recurse(&mut self, node: Node, doc: &Document, parent: Option<RTRef>) -> Result<()> {
         let (render_tree, subroutine) = create_item(node)?;
+
+        if let Some(s) = subroutine {
+            self.subroutines.push(s);
+        }
 
         // parsing is only needed if it isn't the root
         if let Some(p) = parent {
-            let ct = &render_tree.borrow().ctype;
             let mut lock = p.borrow_mut();
 
-            println!("{:?}, {:?}", ct, lock.ctype);
             if lock.ctype != ComponentType::Window {
                 lock.children.push(render_tree.clone());
             } else {
@@ -59,19 +65,26 @@ impl Parser {
             }
         }
 
-        // this will never execute if there are no children, so no need for has_children() check!
+        // this will never execute if there are no children, so no need for has_children() check
         for child in node.children() {
             if child.is_text() {
                 continue;
             }
-            self.recurse(child, Some(render_tree.clone()))?;
+            
+            self.recurse(child, doc, Some(render_tree.clone()))
+                .wrap_err_with(|| {
+                    format!(
+                        "Error while parsing at {}",
+                        doc.text_pos_at(node.range().start)
+                    )
+                })?;
         }
-        
-        return Ok(());
+
+        Ok(())
     }
 
-    pub fn ret(self) -> (Vec<Rc<RefCell<RenderTree>>>, Vec<SubRoutine>) {
-        (self.components, self.subroutines)
+    pub fn ret(self) -> Result<(Vec<Rc<RefCell<RenderTree>>>, Vec<SubRoutine>)> {
+        Ok((self.components, self.subroutines))
     }
 }
 
@@ -116,26 +129,23 @@ fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>)> {
         attributes.insert(x.name().to_string(), x.value().to_string());
     }
 
-    let size_constraint = match size_from_attr(&ct, attributes.get("size")) {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(anyhow!(
-                "Failed to parse size \"{}\": {}",
-                attributes.get("size").unwrap(), // it is safe to unwrap here as it can only error if it is Some
-                e.to_string()
-            ));
-        }
-    };
+    let size_constraint = size_from_attr(&ct, attributes.get("size")).wrap_err_with(|| {
+        format!(
+            "Failed to parse attribute size \"{}\"",
+            attributes.get("size").unwrap(), // it is safe to unwrap here as it can only error if it is Some
+        )
+    })?;
 
     // create clean data store
     let store: Store = Arc::new(Mutex::new(BTreeMap::new()));
 
     let rt = RenderTree {
         children: vec![],
-        store_ref: store.clone(),
+        store: store.clone(),
+        attributes: Arc::new(Mutex::new(attributes.clone())),
         size_constraint,
         ctype: ct,
-        renderer: Some(Box::new(|_, _| Box::new(Clear))),
+        renderer: Some(Box::new(|_, _, _| Box::new(Clear))),
     };
     let sr: Option<SubRoutine> = None;
 

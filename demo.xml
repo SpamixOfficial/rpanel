@@ -4,7 +4,7 @@
     <column>
         <img></img>
     </column>
-    <column>
+    <column size="1">
         <spotify />
     </column>
 </window>

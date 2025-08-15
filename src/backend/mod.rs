@@ -24,19 +24,21 @@ pub struct SubRoutine {
 
 pub struct RenderTree {
     children: Vec<RTRef>,
-    store_ref: Store,
+    store: Store,
+    attributes: Store,
     size_constraint: Constraint,
     ctype: ComponentType,
-    renderer: Option<Box<dyn Fn(Store, Rect) -> Box<dyn Widget>>>,
+    renderer: Option<Box<dyn Fn(Store, Store, Rect) -> Box<dyn Widget>>>,
 }
 
 impl fmt::Debug for RenderTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RenderTree")
-            .field("children", &self.children)
-            .field("store", &self.store_ref)
-            .field("size", &self.size_constraint)
             .field("type", &self.ctype)
+            .field("size", &self.size_constraint)
+            .field("attributes", &self.attributes)
+            .field("children", &self.children)
+            .field("store", &self.store)
             .finish()
     }
 }
