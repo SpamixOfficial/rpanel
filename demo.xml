@@ -1,10 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
 <window>
     <column>
-        
+        <img></img>
     </column>
-    <row>
-        <column>
-            <spotify size="1" />
-        </column>
-    </row>
+    <column>
+        <spotify />
+    </column>
 </window>
