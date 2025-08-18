@@ -2,7 +2,7 @@
 
 <window>
     <column>
-        <img></img>
+        <text border="rltb">Cool!</text>
     </column>
     <column size="1">
         <spotify />

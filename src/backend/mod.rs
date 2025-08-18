@@ -1,35 +1,38 @@
+mod modules;
 pub mod xmlparser;
 
 use ratatui::{
     layout::{Constraint, Rect},
-    widgets::Widget,
+    widgets::{Clear, Widget, WidgetRef},
 };
 
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    fmt,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::{Arc, Mutex}};
 
 type Store = Arc<Mutex<BTreeMap<String, String>>>;
-type RTRef = Rc<RefCell<RenderTree>>;
+pub type RTRef = Rc<RefCell<RenderTree>>;
+pub type RenderCallback = Box<dyn WidgetRef>;
+
+pub trait Module {
+    fn subroutine(routine: &mut SubRoutine) {}
+}
 
 pub struct SubRoutine {
     store: Store,
     attributes: Store,
-    routine: Box<dyn FnMut(&mut Self)>,
+    routine: fn(&mut Self),
 }
 
 pub struct RenderTree {
-    children: Vec<RTRef>,
-    store: Store,
-    attributes: Store,
-    size_constraint: Constraint,
-    ctype: ComponentType,
-    renderer: Option<Box<dyn Fn(Store, Store, Rect) -> Box<dyn Widget>>>,
+    pub children: Vec<RTRef>,
+    pub store: Store,
+    pub attributes: Store,
+    pub size_constraint: Constraint,
+    pub ctype: ComponentType,
+    pub renderer: RenderCallback,
 }
+
+unsafe impl Send for RenderTree {}
+unsafe impl Sync for RenderTree {}
 
 impl fmt::Debug for RenderTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
@@ -43,13 +46,13 @@ impl fmt::Debug for RenderTree {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum ComponentType {
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum ComponentType {
     Row,
     Column,
     Window,
+    Text,
     Plugin,
-    Normal,
 }
 
 impl ComponentType {

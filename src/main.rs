@@ -1,14 +1,18 @@
-use backend::{RenderTree, SubRoutine, xmlparser};
+use backend::{RTRef, RenderTree, SubRoutine, xmlparser};
 use color_eyre::eyre::Result;
 use crossterm::event::{self, Event};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Clear, Paragraph},
 };
-use std::{cell::RefCell, process::exit, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
+
+use crate::renderer::Renderer;
 
 mod backend;
+mod renderer;
+mod utils;
 
 #[derive(Default)]
 struct App {
@@ -20,35 +24,24 @@ struct App {
 async fn main() -> Result<()> {
     color_eyre::install()?;
     let (render_tree, subroutines) = xmlparser::Parser::new("demo.xml")?.parse()?.ret()?;
-    dbg!(render_tree);
-    /*let mut terminal = ratatui::init();
+    dbg!(&render_tree);
+
+    // UI can be synchronous, making it async makes no sense whatsoever
+    run(render_tree)?;
+    ratatui::restore();
+    Ok(())
+}
+
+fn run(rt: Vec<RTRef>) -> color_eyre::Result<()> {
+    let mut terminal = ratatui::init();
+    let renderer = Renderer::new(rt);
+
     loop {
-        terminal.draw(|frame| {
-            let layout = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints(vec![Constraint::Fill(1), Constraint::Fill(1)])
-                .split(frame.area());
-            frame.render_widget(
-                Paragraph::new("Top").block(Block::new().borders(Borders::ALL)),
-                layout[0],
-            );
-            frame.render_widget(
-                Paragraph::new("Bottom").block(Block::new().borders(Borders::ALL)),
-                layout[1],
-            );
-        })?;
+        terminal.draw(|frame| renderer.render(frame))?;
         if matches!(event::read()?, Event::Key(_)) {
             break;
         }
     }
 
-    ratatui::restore();*/
-    return Ok(());
-}
-
-async fn run(mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
-    /*loop {
-        terminal.draw(render_callback)
-    }*/
-    return Ok(());
+    Ok(())
 }
