@@ -1,6 +1,8 @@
 use std::process::exit;
 
-use ratatui::widgets::Borders;
+use ratatui::widgets::{BorderType, Borders};
+
+use crate::backend::Store;
 
 pub fn bool_from_optstr(o: Option<&String>) -> bool {
     o.map(|b| b == "true").unwrap_or_default()
@@ -11,7 +13,10 @@ pub fn create_borders(o: Option<&String>) -> Borders {
     if let Some(s) = o {
         if s == "all" {
             return Borders::ALL;
+        } else if s == "none" {
+            return Borders::NONE;
         }
+
         s.split("").for_each(|p| {
             if !p.is_empty() {
                 border |= border_from_part(p)
@@ -28,9 +33,20 @@ fn border_from_part(p: &str) -> Borders {
         "l" => Borders::LEFT,
         "b" => Borders::BOTTOM,
         "t" => Borders::TOP,
-        _ => {
-            eprintln!("{} is not a valid border specifier", p);
-            exit(1);
-        }
+        _ => Borders::NONE
+    }
+}
+
+pub fn get_border_type(o: Option<&String>) -> BorderType {
+    if o.is_none() {
+        return BorderType::Plain;
+    }
+
+    match o.unwrap().as_str() {
+        "rounded" => BorderType::Rounded,
+        "double" => BorderType::Double,
+        "thick" => BorderType::Thick,
+        "ultrathick" => BorderType::QuadrantOutside,
+        _ => BorderType::Plain
     }
 }

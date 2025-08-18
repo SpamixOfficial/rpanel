@@ -14,7 +14,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-type Store = Arc<Mutex<BTreeMap<String, String>>>;
+pub type Store = Arc<Mutex<BTreeMap<String, String>>>;
 pub type RTRef = Rc<RefCell<RenderTree>>;
 pub type RenderCallback = Box<dyn WidgetRef>;
 

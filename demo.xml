@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <window>
-    <column>
-        <text border="rltb">Cool!</text>
+    <column border="all">
+        <text>Cool!</text>
     </column>
     <row>
-        <text border="rltb">Cool!</text>
-        <column>
-            <text border="all">Cool!</text>
-            <row><text border="all">Cool!</text></row>
+        <column border="all" size="10%" borderType="rounded" padding="1">
+            <text>Cool!</text>
+        </column>
+        <column border="all" padding="1">
+            <row border="b">
+                <text>Cool!</text>
+            </row>
+            <text>Cool!</text>
         </column>
     </row>
 </window>

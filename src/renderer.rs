@@ -20,7 +20,7 @@ impl Renderer {
         let builder = AreaBuilder::new(frame.area());
 
         // initial constraints
-        let areas = Self::build_children_layout(ComponentType::Window, &self.tree, builder);
+        let areas = Self::build_children_layout(ComponentType::Window, &self.tree, builder, None);
 
         for (i, t) in self.tree.clone().into_iter().enumerate() {
             Self::recurse_render(t, frame, areas[i]);
@@ -32,16 +32,22 @@ impl Renderer {
         let children = lock.children.clone();
         let ctype = lock.ctype;
 
-        if !ctype.is_layout() {
-            area_builder.render_into_area(frame.buffer_mut(), &lock.renderer);
-            return; // a module never has any children
-        }
+        area_builder.render_into_area(frame.buffer_mut(), &lock.renderer);
 
-        if children.len() == 0 {
+        // a module never have any children
+        if children.len() == 0 || !ctype.is_layout() {
             return;
         }
 
-        let areas: Vec<AreaBuilder> = Self::build_children_layout(ctype, &children, area_builder);
+        // get margin for area
+        let margin = lock
+            .attributes
+            .lock()
+            .unwrap()
+            .get("padding")
+            .map(|f| f.parse::<u16>().unwrap());
+
+        let areas: Vec<AreaBuilder> = Self::build_children_layout(ctype, &children, area_builder, margin);
 
         for (i, child) in children.into_iter().enumerate() {
             Self::recurse_render(child, frame, areas[i]);
@@ -52,13 +58,14 @@ impl Renderer {
         ctype: ComponentType,
         children: &Vec<RTRef>,
         area_builder: AreaBuilder,
+        margin: Option<u16>
     ) -> Vec<AreaBuilder> {
         let constraints: Vec<Constraint> = children
             .iter()
             .map(|f| f.borrow().size_constraint.clone())
             .collect();
 
-        let areas = area_builder.layout(ctype.layout_direction(), constraints);
+        let areas = area_builder.layout(ctype.layout_direction(), constraints, margin);
 
         areas
     }
@@ -74,8 +81,14 @@ impl AreaBuilder {
         Self { area }
     }
 
-    fn layout(self, direction: Direction, constraints: Vec<Constraint>) -> Vec<Self> {
+    fn layout(
+        self,
+        direction: Direction,
+        constraints: Vec<Constraint>,
+        margin: Option<u16>,
+    ) -> Vec<Self> {
         let res = Layout::default()
+            .margin(margin.unwrap_or(0))
             .direction(direction)
             .constraints(constraints)
             .split(self.area);

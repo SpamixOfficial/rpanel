@@ -4,17 +4,17 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     text::Line,
-    widgets::{Block, Borders, Paragraph, Widget, WidgetRef},
+    widgets::{Block, BorderType, Borders, Paragraph, Widget, WidgetRef},
 };
 
 use crate::{
     backend::{ComponentType, Module, RenderCallback, Store, SubRoutine},
-    utils::create_borders,
+    utils::{bool_from_optstr, create_borders, get_border_type},
 };
 
 pub fn create_renderer(ct: &ComponentType, store: Store, attributes: Store) -> RenderCallback {
     match ct {
-        ComponentType::Column | ComponentType::Window | ComponentType::Row => Box::new(Layout {}),
+        ComponentType::Column | ComponentType::Window | ComponentType::Row => Box::new(Layout::new(attributes)),
         ComponentType::Text => Box::new(Text::new(store, attributes)),
         ComponentType::Plugin => Box::new(Plugin {}),
     }
@@ -29,30 +29,46 @@ pub fn get_subroutine(ct: &ComponentType) -> fn(&mut SubRoutine) {
 }
 
 /* Layout */
-struct Layout {}
+struct Layout {
+    borders: Borders,
+    btype: BorderType
+}
+
+impl Layout {
+    fn new(attributes: Store) -> Self {
+        let lock = attributes.lock().unwrap().clone();
+        let borders = create_borders(lock.get("border"));
+        let btype = get_border_type(lock.get("borderType"));
+
+        Self {
+            borders,
+            btype
+        }
+    }
+}
 
 impl Module for Layout {}
 
 impl WidgetRef for Layout {
-    fn render_ref(&self, _: Rect, _: &mut Buffer) {}
+    fn render_ref(&self, area: Rect, buf: &mut Buffer) {
+        let block = Block::new().borders(self.borders).border_type(self.btype);
+        block.render(area, buf);
+    }
 }
 
 #[derive(Default)]
 struct Text {
     store: Store,
     attributes: Store,
-    borders: Borders,
 }
 
 impl Text {
     fn new(store: Store, attributes: Store) -> Self {
         let locked_attributes = attributes.lock().unwrap().clone();
-        let borders = create_borders(locked_attributes.get("border"));
 
         Self {
             store,
             attributes,
-            borders,
         }
     }
 }
@@ -69,8 +85,7 @@ impl WidgetRef for Text {
             .map(|t| t.split('\n').map(Line::from).collect())
             .unwrap_or_default();
 
-        let mut pg = Paragraph::new(text_widgets);
-        pg = pg.block(Block::new().borders(self.borders));
+        let pg = Paragraph::new(text_widgets);
 
         pg.render(area, buf);
     }
