@@ -37,9 +37,6 @@ pub struct RenderTree {
     pub renderer: RenderCallback,
 }
 
-unsafe impl Send for RenderTree {}
-unsafe impl Sync for RenderTree {}
-
 impl fmt::Debug for RenderTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RenderTree")
