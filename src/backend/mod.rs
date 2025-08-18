@@ -2,11 +2,17 @@ mod modules;
 pub mod xmlparser;
 
 use ratatui::{
-    layout::{Constraint, Rect},
+    layout::{Constraint, Direction, Rect},
     widgets::{Clear, Widget, WidgetRef},
 };
 
-use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::{Arc, Mutex}};
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    fmt,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 type Store = Arc<Mutex<BTreeMap<String, String>>>;
 pub type RTRef = Rc<RefCell<RenderTree>>;
@@ -61,5 +67,16 @@ impl ComponentType {
             self,
             ComponentType::Window | ComponentType::Column | ComponentType::Row
         )
+    }
+
+    pub fn layout_direction(&self) -> Direction {
+        // this should never panic but if it does we know why
+        assert!(self.is_layout());
+
+        if *self == ComponentType::Row {
+            Direction::Horizontal
+        } else {
+            Direction::Vertical
+        }
     }
 }

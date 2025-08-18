@@ -4,7 +4,11 @@
     <column>
         <text border="rltb">Cool!</text>
     </column>
-    <column size="1">
-        <spotify />
-    </column>
+    <row>
+        <text border="rltb">Cool!</text>
+        <column>
+            <text border="all">Cool!</text>
+            <row><text border="all">Cool!</text></row>
+        </column>
+    </row>
 </window>

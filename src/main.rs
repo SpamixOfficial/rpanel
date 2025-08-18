@@ -1,11 +1,6 @@
 use backend::{RTRef, RenderTree, SubRoutine, xmlparser};
 use color_eyre::eyre::Result;
 use crossterm::event::{self, Event};
-use ratatui::{
-    DefaultTerminal,
-    layout::{Constraint, Direction, Layout},
-    widgets::{Block, Borders, Clear, Paragraph},
-};
 use std::{cell::RefCell, rc::Rc};
 
 use crate::renderer::Renderer;

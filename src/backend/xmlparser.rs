@@ -1,14 +1,17 @@
-use color_eyre::{Result, eyre::Context};
-use ratatui::{layout::Constraint, widgets::Clear};
+use color_eyre::{eyre::{Context, Error}, Result};
+use ratatui::layout::Constraint;
 use roxmltree::{Document, Node, ParsingOptions};
 
 use std::{
-    cell::RefCell, collections::BTreeMap, fs, path::PathBuf, rc::Rc, sync::{Arc, Mutex},
+    cell::RefCell,
+    collections::BTreeMap,
+    fs,
+    path::PathBuf,
+    rc::Rc,
+    sync::{Arc, Mutex},
 };
 
-use crate::backend::{
-    ComponentType, RTRef, RenderCallback, RenderTree, Store, SubRoutine, modules::create_renderer,
-};
+use crate::backend::{ComponentType, RTRef, RenderTree, SubRoutine, modules::create_renderer};
 
 pub struct Parser {
     components: Vec<RTRef>,
@@ -43,8 +46,12 @@ impl Parser {
     }
 
     fn recurse(&mut self, node: Node, doc: &Document, parent: Option<RTRef>) -> Result<()> {
-        let (render_tree, subroutine, ct) = create_item(node)?;
+        if node.tag_name().name() == "window" && doc.root_element() != node {
+            return Err(Error::msg("Window is only allowed as a root tag."))
+        }
 
+        let (render_tree, subroutine, ct) = create_item(node)?;
+        
         if let Some(s) = subroutine {
             self.subroutines.push(s);
         }
@@ -126,7 +133,7 @@ fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>, ComponentType)>
     for x in node.attributes() {
         pre_attributes.insert(x.name().to_string(), x.value().to_string());
     }
-    
+
     // create clean data store
     let mut pre_store: BTreeMap<String, String> = BTreeMap::new();
 

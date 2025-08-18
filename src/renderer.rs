@@ -1,11 +1,11 @@
 use ratatui::{
-    DefaultTerminal, Frame,
+    Frame,
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Clear, Widget, WidgetRef},
+    widgets::WidgetRef,
 };
 
-use crate::backend::RTRef;
+use crate::backend::{ComponentType, RTRef};
 
 pub struct Renderer {
     tree: Vec<RTRef>,
@@ -18,31 +18,49 @@ impl Renderer {
 
     pub fn render(&self, frame: &mut Frame) {
         let builder = AreaBuilder::new(frame.area());
-        for t in self.tree.clone() {
-            Self::recurse_render(t, frame, builder);
+
+        // initial constraints
+        let areas = Self::build_children_layout(ComponentType::Window, &self.tree, builder);
+
+        for (i, t) in self.tree.clone().into_iter().enumerate() {
+            Self::recurse_render(t, frame, areas[i]);
         }
     }
 
     fn recurse_render(tree: RTRef, frame: &mut Frame, area_builder: AreaBuilder) {
         let lock = tree.borrow();
         let children = lock.children.clone();
-        
-        // render if not layout
-        if lock.ctype.is_layout() {
-            if children.len() == 0 {
-                return;
-            }
-        } else {
-            area_builder.render_into_area(
-                frame.buffer_mut(),
-                &lock.renderer,
-            );
+        let ctype = lock.ctype;
+
+        if !ctype.is_layout() {
+            area_builder.render_into_area(frame.buffer_mut(), &lock.renderer);
             return; // a module never has any children
         }
 
-        for child in children {
-            Self::recurse_render(child, frame, area_builder);
+        if children.len() == 0 {
+            return;
         }
+
+        let areas: Vec<AreaBuilder> = Self::build_children_layout(ctype, &children, area_builder);
+
+        for (i, child) in children.into_iter().enumerate() {
+            Self::recurse_render(child, frame, areas[i]);
+        }
+    }
+
+    fn build_children_layout(
+        ctype: ComponentType,
+        children: &Vec<RTRef>,
+        area_builder: AreaBuilder,
+    ) -> Vec<AreaBuilder> {
+        let constraints: Vec<Constraint> = children
+            .iter()
+            .map(|f| f.borrow().size_constraint.clone())
+            .collect();
+
+        let areas = area_builder.layout(ctype.layout_direction(), constraints);
+
+        areas
     }
 }
 

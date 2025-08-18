@@ -4,12 +4,12 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     text::Line,
-    widgets::{Block, Borders, Clear, Paragraph, Widget, WidgetRef},
+    widgets::{Block, Borders, Paragraph, Widget, WidgetRef},
 };
 
 use crate::{
     backend::{ComponentType, Module, RenderCallback, Store, SubRoutine},
-    utils::{bool_from_optstr, create_borders},
+    utils::create_borders,
 };
 
 pub fn create_renderer(ct: &ComponentType, store: Store, attributes: Store) -> RenderCallback {
