@@ -1,20 +1,15 @@
 mod modules;
 pub mod xmlparser;
 
+use parking_lot::RwLock;
 use ratatui::{
-    layout::{Constraint, Direction, Rect},
-    widgets::{Clear, Widget, WidgetRef},
+    layout::{Constraint, Direction, Flex},
+    widgets::WidgetRef,
 };
 
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    fmt,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, collections::BTreeMap, fmt, rc::Rc, sync::Arc};
 
-pub type Store = Arc<Mutex<BTreeMap<String, String>>>;
+pub type Store = Arc<RwLock<BTreeMap<String, String>>>;
 pub type RTRef = Rc<RefCell<RenderTree>>;
 pub type RenderCallback = Box<dyn WidgetRef>;
 
@@ -30,7 +25,7 @@ pub struct SubRoutine {
 
 pub struct RenderTree {
     pub children: Vec<RTRef>,
-    pub store: Store,
+    pub store: Option<Store>,
     pub attributes: Store,
     pub size_constraint: Constraint,
     pub ctype: ComponentType,
@@ -55,10 +50,22 @@ pub enum ComponentType {
     Column,
     Window,
     Text,
+    Block,
     Plugin,
 }
 
 impl ComponentType {
+    pub fn from_tag(tag: &str) -> Self {
+        match tag {
+            "window" => ComponentType::Window,
+            "column" => ComponentType::Column,
+            "row" => ComponentType::Row,
+            "text" => ComponentType::Text,
+            "block" => ComponentType::Block,
+            _ => ComponentType::Plugin,
+        }
+    }
+
     pub fn is_layout(&self) -> bool {
         matches!(
             self,

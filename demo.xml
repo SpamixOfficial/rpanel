@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <window>
-    <column border="all">
+    <column border="all" padding="1">
         <text>Cool!</text>
     </column>
     <row>
@@ -9,8 +9,15 @@
             <text>Cool!</text>
         </column>
         <column border="all" padding="1">
-            <row border="b">
-                <text>Cool!</text>
+            <row flex="spaceAround">
+                <column size="40%" border="all" borderType="rounded" padding="1">
+                    <text>Cool!</text>
+                    <text>Cool!</text>
+                </column>
+                <column size="40%" borderType="rounded" border="all" padding="1">
+                    <text>Cool!</text>
+                    <block fill="green"></block>
+                </column>
             </row>
             <text>Cool!</text>
         </column>

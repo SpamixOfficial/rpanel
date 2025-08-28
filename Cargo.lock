@@ -557,6 +557,7 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "crossterm 0.29.0",
+ "parking_lot",
  "ratatui",
  "roxmltree",
  "tokio",

@@ -1,4 +1,5 @@
 use color_eyre::{eyre::{Context, Error}, Result};
+use parking_lot::lock_api::RwLock;
 use ratatui::layout::Constraint;
 use roxmltree::{Document, Node, ParsingOptions};
 
@@ -8,10 +9,10 @@ use std::{
     fs,
     path::PathBuf,
     rc::Rc,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
-use crate::backend::{ComponentType, RTRef, RenderTree, SubRoutine, modules::create_renderer};
+use crate::backend::{modules::create_renderer, ComponentType, RTRef, RenderTree, Store, SubRoutine};
 
 pub struct Parser {
     components: Vec<RTRef>,
@@ -119,13 +120,7 @@ fn size_from_attr(ct: &ComponentType, attr: Option<&String>) -> Result<Constrain
 
 fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>, ComponentType)> {
     let t = node.tag_name().name();
-    let ct = match t {
-        "window" => ComponentType::Window,
-        "column" => ComponentType::Column,
-        "row" => ComponentType::Row,
-        "text" => ComponentType::Text,
-        _ => ComponentType::Plugin,
-    };
+    let ct = ComponentType::from_tag(t);
 
     /* Setup */
     // map attributes and process core-attributes
@@ -134,12 +129,9 @@ fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>, ComponentType)>
         pre_attributes.insert(x.name().to_string(), x.value().to_string());
     }
 
-    // create clean data store
-    let mut pre_store: BTreeMap<String, String> = BTreeMap::new();
-
     // collect text for text module
     if ct == ComponentType::Text {
-        collect_text(node, &mut pre_store);
+        collect_text(node, &mut pre_attributes);
     }
 
     /* Properties */
@@ -151,26 +143,39 @@ fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>, ComponentType)>
         )
     })?;
 
-    let store = Arc::new(Mutex::new(pre_store));
-    let attributes = Arc::new(Mutex::new(pre_attributes.clone()));
+    // create subroutine if needed
+    let sr: Option<SubRoutine>;
+    let store: Option<Store>;
+    if ct == ComponentType::Plugin {
+        // create clean data store if subroutine
+        let store_arc: Store = Arc::new(RwLock::new(BTreeMap::new()));
+        store = Some(store_arc.clone());
+        sr = None;
+    } else {
+        sr = None;
+        store = None;
+    }
+
+    // set up renderer
+    let attributes = Arc::new(RwLock::new(pre_attributes.clone()));
     let renderer = create_renderer(&ct, store.clone(), attributes.clone());
+
 
     /* Final Object Creation */
     let rt = RenderTree {
         children: vec![],
-        store: store.clone(),
+        store: store,
         attributes: attributes,
         size_constraint,
         ctype: ct,
         renderer,
     };
 
-    let sr: Option<SubRoutine> = None;
-
     Ok((Rc::new(RefCell::new(rt)), sr, ct))
 }
 
-fn collect_text(node: Node, store: &mut BTreeMap<String, String>) {
+fn collect_text(node: Node, attributes: &mut BTreeMap<String, String>) {
+    // collect all strings (and ignore all non-text children)
     let res = node
         .children()
         .map(|f| {
@@ -182,5 +187,5 @@ fn collect_text(node: Node, store: &mut BTreeMap<String, String>) {
         })
         .collect::<Vec<&str>>()
         .join("");
-    store.insert("text".to_string(), res);
+    attributes.insert("text".to_string(), res);
 }

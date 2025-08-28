@@ -1,21 +1,17 @@
-use std::collections::BTreeMap;
-
 use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    text::Line,
-    widgets::{Block, BorderType, Borders, Paragraph, Widget, WidgetRef},
+    buffer::Buffer, layout::Rect, style::{Color, Style, Stylize}, text::Line, widgets::{Block, BorderType, Borders, Paragraph, Widget, WidgetRef}
 };
 
 use crate::{
     backend::{ComponentType, Module, RenderCallback, Store, SubRoutine},
-    utils::{bool_from_optstr, create_borders, get_border_type},
+    utils::{create_borders, get_border_type, parse_from_attributes},
 };
 
-pub fn create_renderer(ct: &ComponentType, store: Store, attributes: Store) -> RenderCallback {
+pub fn create_renderer(ct: &ComponentType, store: Option<Store>, attributes: Store) -> RenderCallback {
     match ct {
         ComponentType::Column | ComponentType::Window | ComponentType::Row => Box::new(Layout::new(attributes)),
-        ComponentType::Text => Box::new(Text::new(store, attributes)),
+        ComponentType::Text => Box::new(Text::new(attributes)),
+        ComponentType::Block => Box::new(BlockComp::new(attributes)),
         ComponentType::Plugin => Box::new(Plugin {}),
     }
 }
@@ -24,7 +20,36 @@ pub fn get_subroutine(ct: &ComponentType) -> fn(&mut SubRoutine) {
     match ct {
         ComponentType::Column | ComponentType::Window | ComponentType::Row => Layout::subroutine,
         ComponentType::Text => Text::subroutine,
+        ComponentType::Block => BlockComp::subroutine,
         ComponentType::Plugin => Plugin::subroutine,
+    }
+}
+
+struct BlockComp {
+    fill: Option<Color>
+}
+
+impl BlockComp {
+    fn new(attributes: Store) -> Self {
+        let lock = attributes.read();
+        let fill = parse_from_attributes(lock.get("fill"));
+        Self {
+            fill
+        }
+    }
+}
+
+impl Module for BlockComp {}
+
+impl WidgetRef for BlockComp {
+    fn render_ref(&self, area:Rect, buf: &mut Buffer) {
+        let mut block = Block::new();
+
+        if let Some(f) = self.fill {
+            block = block.bg(f)
+        };
+
+        block.render(area, buf);
     }
 }
 
@@ -36,7 +61,7 @@ struct Layout {
 
 impl Layout {
     fn new(attributes: Store) -> Self {
-        let lock = attributes.lock().unwrap().clone();
+        let lock = attributes.read();
         let borders = create_borders(lock.get("border"));
         let btype = get_border_type(lock.get("borderType"));
 
@@ -58,16 +83,12 @@ impl WidgetRef for Layout {
 
 #[derive(Default)]
 struct Text {
-    store: Store,
     attributes: Store,
 }
 
 impl Text {
-    fn new(store: Store, attributes: Store) -> Self {
-        let locked_attributes = attributes.lock().unwrap().clone();
-
+    fn new( attributes: Store) -> Self {
         Self {
-            store,
             attributes,
         }
     }
@@ -77,7 +98,7 @@ impl Module for Text {}
 
 impl WidgetRef for Text {
     fn render_ref(&self, area: Rect, buf: &mut Buffer) {
-        let lock = self.store.lock().unwrap();
+        let lock = self.attributes.read();
         // store attr
         let text = lock.get("text");
 
@@ -85,7 +106,11 @@ impl WidgetRef for Text {
             .map(|t| t.split('\n').map(Line::from).collect())
             .unwrap_or_default();
 
+            
         let pg = Paragraph::new(text_widgets);
+
+        // useful for debugging
+        //pg = pg.block(Block::bordered().border_style(Style::new().fg(Color::Green)));
 
         pg.render(area, buf);
     }

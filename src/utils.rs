@@ -1,11 +1,19 @@
-use std::process::exit;
+use std::{fmt::Debug, str::FromStr};
 
-use ratatui::widgets::{BorderType, Borders};
-
-use crate::backend::Store;
+use ratatui::{
+    layout::Flex,
+    widgets::{BorderType, Borders},
+};
 
 pub fn bool_from_optstr(o: Option<&String>) -> bool {
     o.map(|b| b == "true").unwrap_or_default()
+}
+pub fn parse_from_attributes<T>(o: Option<&String>) -> Option<T>
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug
+{
+    o.map(|f| f.parse::<T>().unwrap())
 }
 
 pub fn create_borders(o: Option<&String>) -> Borders {
@@ -33,7 +41,7 @@ fn border_from_part(p: &str) -> Borders {
         "l" => Borders::LEFT,
         "b" => Borders::BOTTOM,
         "t" => Borders::TOP,
-        _ => Borders::NONE
+        _ => Borders::NONE,
     }
 }
 
@@ -47,6 +55,20 @@ pub fn get_border_type(o: Option<&String>) -> BorderType {
         "double" => BorderType::Double,
         "thick" => BorderType::Thick,
         "ultrathick" => BorderType::QuadrantOutside,
-        _ => BorderType::Plain
+        _ => BorderType::Plain,
+    }
+}
+
+pub fn flex_from_str(o: Option<&String>) -> Flex {
+    if let Some(f) = o {
+        match f.as_str() {
+            "end" => Flex::End,
+            "center" => Flex::Center,
+            "spaceBetween" => Flex::SpaceBetween,
+            "spaceAround" => Flex::SpaceAround,
+            _ => Flex::Start,
+        }
+    } else {
+        Flex::Start
     }
 }

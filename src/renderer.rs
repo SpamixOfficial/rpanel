@@ -1,11 +1,51 @@
+use std::collections::BTreeMap;
+
 use ratatui::{
     Frame,
     buffer::Buffer,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Flex, Layout, Rect},
     widgets::WidgetRef,
 };
 
-use crate::backend::{ComponentType, RTRef};
+use crate::{
+    backend::{ComponentType, RTRef},
+    utils::{flex_from_str, parse_from_attributes},
+};
+
+#[derive(Default)]
+struct LayoutProperties {
+    margin: u16,
+    spacing: u16,
+    flex: Flex,
+}
+
+impl LayoutProperties {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn margin(mut self, margin: Option<u16>) -> Self {
+        self.margin = margin.unwrap_or(0);
+        self
+    }
+
+    fn spacing(mut self, spacing: Option<u16>) -> Self {
+        self.spacing = spacing.unwrap_or(0);
+        self
+    }
+
+    fn flex(mut self, flex: Flex) -> Self {
+        self.flex = flex;
+        self
+    }
+
+    fn from_attributes(a: &BTreeMap<String, String>) -> Self {
+        Self::new()
+            .margin(parse_from_attributes(a.get("padding")))
+            .flex(flex_from_str(a.get("flex")))
+            .spacing(parse_from_attributes(a.get("spacing")))
+    }
+}
 
 pub struct Renderer {
     tree: Vec<RTRef>,
@@ -20,7 +60,12 @@ impl Renderer {
         let builder = AreaBuilder::new(frame.area());
 
         // initial constraints
-        let areas = Self::build_children_layout(ComponentType::Window, &self.tree, builder, None);
+        let areas = Self::build_children_layout(
+            ComponentType::Window,
+            &self.tree,
+            builder,
+            LayoutProperties::new()
+        );
 
         for (i, t) in self.tree.clone().into_iter().enumerate() {
             Self::recurse_render(t, frame, areas[i]);
@@ -39,15 +84,13 @@ impl Renderer {
             return;
         }
 
-        // get margin for area
-        let margin = lock
-            .attributes
-            .lock()
-            .unwrap()
-            .get("padding")
-            .map(|f| f.parse::<u16>().unwrap());
+        let attributes_read = lock.attributes.read();
 
-        let areas: Vec<AreaBuilder> = Self::build_children_layout(ctype, &children, area_builder, margin);
+        // get properties for layout
+        let props = LayoutProperties::from_attributes(&attributes_read);
+
+        let areas: Vec<AreaBuilder> =
+            Self::build_children_layout(ctype, &children, area_builder, props);
 
         for (i, child) in children.into_iter().enumerate() {
             Self::recurse_render(child, frame, areas[i]);
@@ -58,14 +101,14 @@ impl Renderer {
         ctype: ComponentType,
         children: &Vec<RTRef>,
         area_builder: AreaBuilder,
-        margin: Option<u16>
+        layout_properties: LayoutProperties
     ) -> Vec<AreaBuilder> {
         let constraints: Vec<Constraint> = children
             .iter()
             .map(|f| f.borrow().size_constraint.clone())
             .collect();
 
-        let areas = area_builder.layout(ctype.layout_direction(), constraints, margin);
+        let areas = area_builder.layout(ctype.layout_direction(), constraints, layout_properties);
 
         areas
     }
@@ -85,13 +128,16 @@ impl AreaBuilder {
         self,
         direction: Direction,
         constraints: Vec<Constraint>,
-        margin: Option<u16>,
+        props: LayoutProperties,
     ) -> Vec<Self> {
         let res = Layout::default()
-            .margin(margin.unwrap_or(0))
+            .margin(props.margin)
+            .flex(props.flex)
+            .spacing(props.spacing)
             .direction(direction)
             .constraints(constraints)
             .split(self.area);
+
         res.iter().map(|a| Self { area: *a }).collect::<Vec<Self>>()
     }
 
