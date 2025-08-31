@@ -9,12 +9,6 @@ mod backend;
 mod renderer;
 mod utils;
 
-#[derive(Default)]
-struct App {
-    components: Vec<Rc<RefCell<RenderTree>>>,
-    routines: Vec<SubRoutine>,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;

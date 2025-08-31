@@ -1,4 +1,118 @@
-<?xml version='1.0'?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-    <xs:element></xs:element>
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    elementFormDefault="qualified"
+    attributeFormDefault="unqualified">
+
+    <!--              ELEMENTS              -->
+
+    <!-- Layout elements-->
+    <xs:element name="window">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:any minOccurs="0" maxOccurs="unbounded"></xs:any>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="row" type="Layout" />
+    <xs:element name="column" type="Layout" />
+
+    <!-- Other elements-->
+    <xs:element name="text" type="xs:string" />
+    <xs:element name="block">
+        <xs:complexType>
+            <xs:attribute name="fill" type="Color" />
+        </xs:complexType>
+    </xs:element>
+
+    <!--              TYPES              -->
+
+    <xs:complexType name="Layout">
+        <xs:sequence>
+            <xs:any minOccurs="0" maxOccurs="unbounded"></xs:any>
+        </xs:sequence>
+        <xs:attribute name="border" type="Border" />
+        <xs:attribute name="borderType" type="BorderType" />
+        <xs:attribute name="flex" type="Flex" />
+        <xs:attribute name="size" type="Size" />
+        <xs:attribute name="padding" type="xs:nonNegativeInteger" />
+        <xs:attribute name="spacing" type="xs:nonNegativeInteger" />
+    </xs:complexType>
+
+
+    <xs:simpleType name="BorderType">
+        <xs:annotation>
+            <xs:documentation>Enum defined as: rounded, double, thick, ultrathick or plain </xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="rounded" />
+            <xs:enumeration value="double" />
+            <xs:enumeration value="thick" />
+            <xs:enumeration value="ultrathick" />
+            <xs:enumeration value="plain" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="Border">
+        <xs:annotation>
+            <xs:documentation>Enum defined as: all,none or a combination of rltb (right, left, top,
+                bottom) </xs:documentation>
+        </xs:annotation>
+        <xs:union>
+            <xs:simpleType>
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="none" />
+                    <xs:enumeration value="all" />
+                </xs:restriction>
+            </xs:simpleType>
+            <xs:simpleType>
+                <xs:restriction base="xs:string">
+                    <!--Allows
+                    duplicates, which shouldn't cause any issues (they are pointless)-->
+                    <xs:pattern value="[rlbt]{1,4}" />
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:union>
+    </xs:simpleType>
+
+    <xs:simpleType name="Flex">
+        <xs:annotation>
+            <xs:documentation>Enum defined as: end, center, spaceBetween, spaceAround or start </xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="end" />
+            <xs:enumeration value="center" />
+            <xs:enumeration value="spaceBetween" />
+            <xs:enumeration value="spaceAround" />
+            <xs:enumeration value="start" />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="Size">
+        <xs:annotation>
+            <xs:documentation> Size of a layout element. Defined as: | X% == Percentage(X) | X/Y ==
+                Ratios(X,Y) | X/ == Fill(X) | X == Length(X) | _ == Fill(1) </xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string" />
+    </xs:simpleType>
+
+    <xs:simpleType name="Color">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="black" />
+            <xs:enumeration value="red" />
+            <xs:enumeration value="green" />
+            <xs:enumeration value="yellow" />
+            <xs:enumeration value="blue" />
+            <xs:enumeration value="magenta" />
+            <xs:enumeration value="cyan" />
+            <xs:enumeration value="gray" />
+            <xs:enumeration value="darkgray" />
+            <xs:enumeration value="lightred" />
+            <xs:enumeration value="lightgreen" />
+            <xs:enumeration value="lightyellow" />
+            <xs:enumeration value="lightblue" />
+            <xs:enumeration value="lightmagenta" />
+            <xs:enumeration value="lightcyan" />
+            <xs:enumeration value="white" />
+        </xs:restriction>
+    </xs:simpleType>
 </xs:schema>

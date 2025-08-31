@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::{
-    backend::{ComponentType, RTRef},
+    backend::{Attribute, ComponentType, RTRef},
     utils::{flex_from_str, parse_from_attributes},
 };
 
@@ -39,7 +39,7 @@ impl LayoutProperties {
         self
     }
 
-    fn from_attributes(a: &BTreeMap<String, String>) -> Self {
+    fn from_attributes(a: &BTreeMap<String, Attribute>) -> Self {
         Self::new()
             .margin(parse_from_attributes(a.get("padding")))
             .flex(flex_from_str(a.get("flex")))

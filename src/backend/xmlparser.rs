@@ -1,18 +1,16 @@
-use color_eyre::{eyre::{Context, Error}, Result};
+use color_eyre::{
+    Result,
+    eyre::{Context, Error},
+};
 use parking_lot::lock_api::RwLock;
 use ratatui::layout::Constraint;
 use roxmltree::{Document, Node, ParsingOptions};
 
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    fs,
-    path::PathBuf,
-    rc::Rc,
-    sync::Arc,
-};
+use std::{cell::RefCell, collections::BTreeMap, fs, path::PathBuf, rc::Rc, sync::Arc};
 
-use crate::backend::{modules::create_renderer, ComponentType, RTRef, RenderTree, Store, SubRoutine};
+use crate::{backend::{
+    modules::create_renderer, Attribute, ComponentType, RTRef, RenderTree, Store, SubRoutine
+}, utils::read_opt_attributes};
 
 pub struct Parser {
     components: Vec<RTRef>,
@@ -48,11 +46,11 @@ impl Parser {
 
     fn recurse(&mut self, node: Node, doc: &Document, parent: Option<RTRef>) -> Result<()> {
         if node.tag_name().name() == "window" && doc.root_element() != node {
-            return Err(Error::msg("Window is only allowed as a root tag."))
+            return Err(Error::msg("Window is only allowed as a root tag."));
         }
 
         let (render_tree, subroutine, ct) = create_item(node)?;
-        
+
         if let Some(s) = subroutine {
             self.subroutines.push(s);
         }
@@ -93,7 +91,16 @@ impl Parser {
     }
 }
 
-fn size_from_attr(ct: &ComponentType, attr: Option<&String>) -> Result<Constraint> {
+
+/// Parse size from attribute
+/// 
+/// Sizes:
+/// - X% == Percentage(X)
+/// - X/Y == Ratios(X,Y)
+/// - X/ == Fill(X)
+/// - X == Length(X)
+/// - _ == Fill(1)
+fn size_from_attr(ct: &ComponentType, attr: Option<String>) -> Result<Constraint> {
     let val: Constraint;
 
     // custom sizes are only allowed for layouts, ignored otherwise
@@ -122,30 +129,10 @@ fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>, ComponentType)>
     let t = node.tag_name().name();
     let ct = ComponentType::from_tag(t);
 
-    /* Setup */
-    // map attributes and process core-attributes
-    let mut pre_attributes: BTreeMap<String, String> = BTreeMap::new();
-    for x in node.attributes() {
-        pre_attributes.insert(x.name().to_string(), x.value().to_string());
-    }
-
-    // collect text for text module
-    if ct == ComponentType::Text {
-        collect_text(node, &mut pre_attributes);
-    }
-
-    /* Properties */
-
-    let size_constraint = size_from_attr(&ct, pre_attributes.get("size")).wrap_err_with(|| {
-        format!(
-            "Failed to parse attribute size \"{}\"",
-            pre_attributes.get("size").unwrap(), // it is safe to unwrap here as it can only error if it is Some
-        )
-    })?;
-
     // create subroutine if needed
     let sr: Option<SubRoutine>;
     let store: Option<Store>;
+
     if ct == ComponentType::Plugin {
         // create clean data store if subroutine
         let store_arc: Store = Arc::new(RwLock::new(BTreeMap::new()));
@@ -156,10 +143,21 @@ fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>, ComponentType)>
         store = None;
     }
 
+    /* Setup */
+    let pre_attributes = collect_attributes(&ct, node, &store);
+
+    /* Properties */
+
+    let size_constraint = size_from_attr(&ct, read_opt_attributes(pre_attributes.get("size"))).wrap_err_with(|| {
+        format!(
+            "Failed to parse attribute size \"{}\"",
+            read_opt_attributes(pre_attributes.get("size")).unwrap(), // it is safe to unwrap here as it can only error if it is Some
+        )
+    })?;
+
     // set up renderer
     let attributes = Arc::new(RwLock::new(pre_attributes.clone()));
     let renderer = create_renderer(&ct, store.clone(), attributes.clone());
-
 
     /* Final Object Creation */
     let rt = RenderTree {
@@ -174,7 +172,29 @@ fn create_item(node: Node) -> Result<(RTRef, Option<SubRoutine>, ComponentType)>
     Ok((Rc::new(RefCell::new(rt)), sr, ct))
 }
 
-fn collect_text(node: Node, attributes: &mut BTreeMap<String, String>) {
+fn collect_attributes(
+    ct: &ComponentType,
+    node: Node<'_, '_>,
+    store: &Option<Store>,
+) -> BTreeMap<String, Attribute> {
+    let mut pre_attributes: BTreeMap<String, Attribute> = BTreeMap::new();
+    // map attributes and process core-attributes
+    for x in node.attributes() {
+        pre_attributes.insert(
+            x.name().to_string(),
+            Attribute::create(x.value().to_string(), store.clone()),
+        );
+    }
+
+    // collect text for text module
+    if *ct == ComponentType::Text {
+        collect_text(node, &mut pre_attributes, store);
+    }
+
+    pre_attributes
+}
+
+fn collect_text(node: Node, attributes: &mut BTreeMap<String, Attribute>, store: &Option<Store>) {
     // collect all strings (and ignore all non-text children)
     let res = node
         .children()
@@ -187,5 +207,5 @@ fn collect_text(node: Node, attributes: &mut BTreeMap<String, String>) {
         })
         .collect::<Vec<&str>>()
         .join("");
-    attributes.insert("text".to_string(), res);
+    attributes.insert("text".to_string(), Attribute::create(res, store.clone()));
 }

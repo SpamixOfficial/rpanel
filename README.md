@@ -4,8 +4,8 @@ RPanel is a modular status panel written in Rust, made for TUI users. It provide
 # Tracker
 - 🚧 XML-parsing
     - 🚧 Subroutines
-    - 🚧 Renderer
+    - ✅ Renderer
     - ✅ Layout
-- 🛑 UI rendering
+- 🚧 UI rendering
 - 🛑 Python Plugin API
 - 🛑 "Modules"-stdlib
